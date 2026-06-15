@@ -166,10 +166,13 @@
     inset: 0;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;   /* 카메라(모니터 상단)와 시선 맞추기 위해 상단 정렬 */
-    padding-top: 4vh;
+    justify-content: flex-start;   /* 기본: 상단 정렬(카메라가 모니터 상단일 때) */
     overflow: hidden;
   }
+  /* 글자 세로 위치: 상 / 중 / 하 (촬영 중 버튼으로 전환) */
+  #stage.pos-top    { justify-content: flex-start; padding-top: 4vh; }
+  #stage.pos-mid    { justify-content: center; }
+  #stage.pos-bottom { justify-content: flex-end; padding-bottom: 11vh; }
   #stage.dark  { background: #000; color: #fff; }
   #stage.light { background: #fff; color: #111; }
 
@@ -293,12 +296,13 @@
   <div id="track"></div>
 
   <div id="topbar">
+    <button id="posBtn" title="글자 위치 상/중/하 (V)">상</button>
     <button id="minus" title="작게 (Z)">A−</button>
     <button id="plus" title="크게 (A)">A+</button>
     <button class="exit" id="exit" title="종료 (ESC)">종료</button>
   </div>
   <div id="progress"></div>
-  <div id="footHint">↓ → Space 다음 · ↑ ← 이전</div>
+  <div id="footHint">↓ → Space 다음 · ↑ ← 이전 · V 위치(상/중/하)</div>
 </section>
 
 <script>
@@ -328,6 +332,7 @@
       if (s.near)  nearSize.value = s.near;
       if (s.theme) setTheme(s.theme);
       if (s.script)scriptEl.value = s.script;
+      setPos(s.pos || "top");
     } catch (e) {}
     syncLabels();
   }
@@ -336,6 +341,7 @@
       cur:   curSize.value,
       near:  nearSize.value,
       theme: stage.classList.contains("light") ? "light" : "dark",
+      pos:   stage.dataset.pos || "top",
       script: scriptEl.value
     };
     try { localStorage.setItem(STORE, JSON.stringify(s)); } catch (e) {}
@@ -358,6 +364,25 @@
     setTheme(b.dataset.theme);
     saveSettings();
   });
+
+  // ---------- 글자 세로 위치 (상/중/하) ----------
+  var POS_ORDER  = ["top", "mid", "bottom"];
+  var POS_LABEL  = { top: "상", mid: "중", bottom: "하" };
+  var posBtn = document.getElementById("posBtn");
+  function setPos(p) {
+    if (POS_ORDER.indexOf(p) === -1) p = "top";
+    stage.classList.remove("pos-top", "pos-mid", "pos-bottom");
+    stage.classList.add("pos-" + p);
+    posBtn.textContent = POS_LABEL[p];
+    stage.dataset.pos = p;
+  }
+  function cyclePos() {
+    var cur = stage.dataset.pos || "top";
+    var next = POS_ORDER[(POS_ORDER.indexOf(cur) + 1) % POS_ORDER.length];
+    setPos(next);
+    saveSettings();
+  }
+  posBtn.addEventListener("click", cyclePos);
 
   // ---------- 슬라이더 ----------
   curSize.addEventListener("input",  function () { syncLabels(); saveSettings(); if (stage.style.display!=="flex") {} render(); });
@@ -470,6 +495,7 @@
       case "End":  e.preventDefault(); index = lines.length - 1; render(); break;
       case "a": case "A": e.preventDefault(); bumpSize(4); break;
       case "z": case "Z": e.preventDefault(); bumpSize(-4); break;
+      case "v": case "V": e.preventDefault(); cyclePos(); break;
       case "Escape": e.preventDefault(); stop(); break;
     }
   });
